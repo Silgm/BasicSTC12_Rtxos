@@ -1,0 +1,223 @@
+C51 COMPILER V9.59.0.0   HARDWARE_SERIAL2                                                  02/26/2019 18:43:20 PAGE 1   
+
+
+C51 COMPILER V9.59.0.0, COMPILATION OF MODULE HARDWARE_SERIAL2
+OBJECT MODULE PLACED IN .\Objects\hardware_serial2.obj
+COMPILER INVOKED BY: D:\Program Files (x86)\Keil_v5\C51\BIN\C51.EXE hardware_serial2.c LARGE OMF2 OPTIMIZE(8,SPEED) BROW
+                    -SE DEBUG PRINT(.\Listings\hardware_serial2.lst) OBJECT(.\Objects\hardware_serial2.obj)
+
+line level    source
+
+   1          #include "hardware_serial2.h"
+   2          #include "stc12c5a60s2.h"
+   3          
+   4          bit busy;
+   5          static uint16_t _avaliable = 0;
+   6          
+   7          static int32_t fosc;
+   8          static int32_t baud;
+   9          
+  10          #define S2RI  0x01          //S2CON.0
+  11          #define S2TI  0x02          //S2CON.1
+  12          #define S2RB8 0x04          //S2CON.2
+  13          #define S2TB8 0x08          //S2CON.3
+  14          
+  15          char recvBuff[REC_BUFF_SIZE] = {0};
+  16          
+  17          typedef struct struct_RecvQueue
+  18          {
+  19                  int head;
+  20                  int tail;
+  21          }RecvQueue;
+  22          
+  23          static RecvQueue rq;
+  24          
+  25          static void QueInit()
+  26          {
+  27   1              rq.head = 0;
+  28   1              rq.tail = 0;
+  29   1      }
+  30          
+  31          static void QueIn(char dat)
+  32          {
+  33   1              recvBuff[(rq.tail)] = dat;
+  34   1              ++(rq.tail);
+  35   1              rq.tail %= REC_BUFF_SIZE;
+  36   1      }
+  37          
+  38          static char QueOut()
+  39          {
+  40   1              char dat = recvBuff[(rq.head)];
+  41   1              ++(rq.head);
+  42   1              rq.head %= REC_BUFF_SIZE;
+  43   1              return dat;
+  44   1      }
+  45          
+  46          void Serial2_init(int32_t in_fosc, int32_t in_baud)
+  47          {
+  48   1              fosc = in_fosc;
+  49   1              baud = in_baud;
+  50   1              QueInit();
+  51   1              
+  52   1      #if (PARITYBIT == NONE_PARITY)
+  53   1          S2CON = 0x50;           //8-bit variable UART
+  54   1      #elif (PARITYBIT == ODD_PARITY) || (PARITYBIT == EVEN_PARITY) || (PARITYBIT == MARK_PARITY)
+C51 COMPILER V9.59.0.0   HARDWARE_SERIAL2                                                  02/26/2019 18:43:20 PAGE 2   
+
+                  S2CON = 0xda;           //9-bit variable UART, parity bit initial to 1
+              #elif (PARITYBIT == SPACE_PARITY)
+                  S2CON = 0xd2;           //9-bit variable UART, parity bit initial to 0
+              #endif
+  59   1      
+  60   1          BRT = -(fosc/32/baud);  //Set auto-reload vaule of baudrate generator
+  61   1          AUXR = 0x14;            //Baudrate generator work in 1T mode
+  62   1          IE2 = 0x01;             //Enable UART2 interrupt
+  63   1          EA = 1;                 //Open master interrupt switch
+  64   1      }
+  65          
+  66          static void sendByte(char dat)
+  67          {
+  68   1          while (busy);           //Wait for the completion of the previous data is sent
+  69   1          ACC = dat;              //Calculate the even parity bit P (PSW.0)
+  70   1          if (P)                  //Set the parity bit according to P
+  71   1          {
+  72   2      #if (PARITYBIT == ODD_PARITY)
+                      S2CON &= ~S2TB8;    //Set parity bit to 0
+              #elif (PARITYBIT == EVEN_PARITY)
+                      S2CON |= S2TB8;     //Set parity bit to 1
+              #endif
+  77   2          }
+  78   1          else
+  79   1          {
+  80   2      #if (PARITYBIT == ODD_PARITY)
+                      S2CON |= S2TB8;     //Set parity bit to 1
+              #elif (PARITYBIT == EVEN_PARITY)
+                      S2CON &= ~S2TB8;    //Set parity bit to 0
+              #endif
+  85   2          }
+  86   1          busy = 1;
+  87   1          S2BUF = ACC;            //Send data to UART2 buffer
+  88   1      }
+  89          
+  90          void Serial2_sendByte(char byte)
+  91          {
+  92   1              sendByte(byte);
+  93   1      }
+  94          
+  95          void Serial2_sendString(char *str)
+  96          {
+  97   1              while(*str)
+  98   1              {
+  99   2                      sendByte(*str++);
+ 100   2              }
+ 101   1      }
+ 102          
+ 103          void Serial2_send(char *buff, uint16_t buffSize)
+ 104          {
+ 105   1              uint16_t i = 0;
+ 106   1              for (; i < buffSize; ++i)
+ 107   1              {
+ 108   2                      sendByte(buff[i]);
+ 109   2              }
+ 110   1      }
+ 111          
+ 112          char Serial2_recvByte()
+ 113          {
+ 114   1              char dat = 0;
+ 115   1              if (_avaliable > 0)
+ 116   1              {
+C51 COMPILER V9.59.0.0   HARDWARE_SERIAL2                                                  02/26/2019 18:43:20 PAGE 3   
+
+ 117   2                      --_avaliable;
+ 118   2                      dat = QueOut();
+ 119   2              }
+ 120   1              return dat;
+ 121   1      }
+ 122          
+ 123          
+ 124          uint16_t Serial2_avaliable()
+ 125          {
+ 126   1              return _avaliable;
+ 127   1      }
+ 128          
+ 129          uint16_t Serial2_recv(char *buff, uint16_t buffSize)
+ 130          {
+ 131   1              uint16_t cnt = 0;
+ 132   1              for (; Serial2_avaliable() > 0 && cnt < buffSize; ++cnt)
+ 133   1              {
+ 134   2                      buff[cnt] = Serial2_recvByte();
+ 135   2              }
+ 136   1              return cnt;
+ 137   1      }
+ 138          
+ 139          uint16_t Serial2_recvWithBlock(char *buff, uint16_t buffSize)
+ 140          {
+ 141   1              uint16_t cnt = 0;
+ 142   1              while(Serial2_avaliable() == 0);
+ 143   1              for (;Serial2_avaliable() > 0 && cnt < buffSize; ++cnt)
+ 144   1              {
+ 145   2                      buff[cnt] = Serial2_recvByte();
+ 146   2              }
+ 147   1              return cnt;
+ 148   1      }
+ 149          
+ 150          char Serial2_recvByteWithBlock()
+ 151          {
+ 152   1              while (Serial2_avaliable() == 0);
+ 153   1              return Serial2_recvByte();
+ 154   1      }
+ 155          
+ 156          uint16_t Serial2_recvUntilN(char *buff, uint16_t buffSize, uint16_t n)
+ 157          {
+ 158   1              uint16_t cnt = 0;
+ 159   1              for (;cnt < n && cnt < buffSize; ++cnt)
+ 160   1              {
+ 161   2                      buff[cnt] = Serial2_recvByteWithBlock();
+ 162   2              }
+ 163   1              return cnt;
+ 164   1      }
+ 165          
+ 166          static void Callback_Receive()
+ 167          {
+ 168   1              char byte = S2BUF;
+ 169   1              QueIn(byte);
+ 170   1              ++_avaliable;
+ 171   1          //P2 = (S2CON & S2RB8);//P2.2 show parity bit
+ 172   1      }
+ 173          
+ 174          void Interrupt_Serial2_Receive_Data() interrupt 8 //using 1
+ 175          {
+ 176   1          if (S2CON & S2RI)
+ 177   1          {
+ 178   2              S2CON &= ~S2RI;     //Clear receive interrupt flag
+C51 COMPILER V9.59.0.0   HARDWARE_SERIAL2                                                  02/26/2019 18:43:20 PAGE 4   
+
+ 179   2                      
+ 180   2                      //Receive CallBack
+ 181   2                      Callback_Receive();
+ 182   2          }
+ 183   1          if (S2CON & S2TI)
+ 184   1          {
+ 185   2              S2CON &= ~S2TI;     //Clear transmit interrupt flag
+ 186   2              busy = 0;           //Clear transmit busy flag
+ 187   2          }
+ 188   1      }
+ 189          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    814    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =    270      39
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =      1    ----
+   EDATA SIZE       =   ----    ----
+   HDATA SIZE       =   ----    ----
+   XDATA CONST SIZE =   ----    ----
+   FAR CONST SIZE   =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

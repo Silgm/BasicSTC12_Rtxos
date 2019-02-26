@@ -1,0 +1,12 @@
+".\Objects\STARTUP.obj",
+".\Objects\ads1115.obj",
+".\Objects\at24c02.obj",
+".\Objects\delay.obj",
+".\Objects\gpio.obj",
+".\Objects\i2csoft.obj",
+".\Objects\lcd1602.obj",
+".\Objects\main.obj",
+".\Objects\hardware_serial2.obj" 
+TO ".\Objects\BasicSTC12_RX51_Tiny" 
+Rtx51Tiny 
+PRINT(".\Listings\BasicSTC12_RX51_Tiny.map") REMOVEUNUSED 
