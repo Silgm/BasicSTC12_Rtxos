@@ -6,7 +6,8 @@
 ".\Objects\i2csoft.obj",
 ".\Objects\lcd1602.obj",
 ".\Objects\main.obj",
-".\Objects\hardware_serial2.obj" 
+".\Objects\hardware_serial2.obj",
+".\Objects\ad9850.obj" 
 TO ".\Objects\BasicSTC12_RX51_Tiny" 
 Rtx51Tiny 
 PRINT(".\Listings\BasicSTC12_RX51_Tiny.map") REMOVEUNUSED 

@@ -1,0 +1,139 @@
+C51 COMPILER V9.59.0.0   AD9850                                                            02/27/2019 12:46:46 PAGE 1   
+
+
+C51 COMPILER V9.59.0.0, COMPILATION OF MODULE AD9850
+OBJECT MODULE PLACED IN .\Objects\ad9850.obj
+COMPILER INVOKED BY: D:\Program Files (x86)\Keil_v5\C51\BIN\C51.EXE ad9850.c LARGE OMF2 OPTIMIZE(8,SPEED) BROWSE DEBUG P
+                    -RINT(.\Listings\ad9850.lst) OBJECT(.\Objects\ad9850.obj)
+
+line level    source
+
+   1          #include "ad9850.h"
+   2          #include "delay.h"
+   3          #include "binary.h"
+   4          
+   5          #include <limits.h>
+   6          
+   7          //phasePowerCon
+   8          //phase[7:3] Power[2] Con[1:0]
+   9          
+  10          void Ad9850_create(Ad9850 *dev, Pin wclk, Pin fq, Pin rst, Pin d7, uint32_t maxFreq)
+  11          {
+  12   1              dev->wclk = wclk;
+  13   1              dev->fq = fq;
+  14   1              dev->rst = rst;
+  15   1              dev->d7 = d7;
+  16   1              
+  17   1              dev->maxFreq = maxFreq;
+  18   1      }
+  19          
+  20          static void Ad9850_send(Ad9850 *dev, uint32_t freq, uint8_t phasePowerCon)
+  21          {
+  22   1              uint8_t i;
+  23   1              for (i = 0; i < 32; ++i)
+  24   1              {
+  25   2                      if (freq & 1)
+  26   2                      {
+  27   3                              digitalWrite(dev->d7, HIGH);
+  28   3                      }
+  29   2                      else
+  30   2                      {
+  31   3                              digitalWrite(dev->d7, LOW);
+  32   3                      }
+  33   2                      freq >>= 1;
+  34   2                      digitalWrite(dev->wclk, LOW);
+  35   2                      digitalWrite(dev->wclk, HIGH);
+  36   2              }
+  37   1              
+  38   1              for (i = 0; i < 8; ++i)
+  39   1              {
+  40   2                      if (phasePowerCon & 1)
+  41   2                      {
+  42   3                              digitalWrite(dev->d7, HIGH);
+  43   3                      }
+  44   2                      else
+  45   2                      {
+  46   3                              digitalWrite(dev->d7, LOW);
+  47   3                      }
+  48   2                      freq >>= 1;
+  49   2                      digitalWrite(dev->wclk, LOW);
+  50   2                      digitalWrite(dev->wclk, HIGH);
+  51   2              }
+  52   1              digitalWrite(dev->wclk, LOW);
+  53   1      }
+  54          
+C51 COMPILER V9.59.0.0   AD9850                                                            02/27/2019 12:46:46 PAGE 2   
+
+  55          
+  56          
+  57          void Ad9850_init(Ad9850 *dev)
+  58          {
+  59   1              pinMode(dev->wclk, Mode_WeakUp);
+  60   1              pinMode(dev->fq, Mode_WeakUp);
+  61   1              pinMode(dev->rst, Mode_WeakUp);
+  62   1              pinMode(dev->d7, Mode_WeakUp);
+  63   1              
+  64   1              
+  65   1              digitalWrite(dev->rst, HIGH);
+  66   1              delay_ms(10);
+  67   1              
+  68   1              digitalWrite(dev->wclk, LOW);
+  69   1              digitalWrite(dev->fq, LOW);
+  70   1              digitalWrite(dev->rst, LOW);
+  71   1              digitalWrite(dev->d7, LOW);
+  72   1              
+  73   1              digitalWrite(dev->wclk, HIGH);
+  74   1              digitalWrite(dev->wclk, LOW);
+  75   1              
+  76   1              //fq pulse
+  77   1              digitalWrite(dev->fq, HIGH);
+  78   1              digitalWrite(dev->fq, LOW);     
+  79   1              
+  80   1              Ad9850_send(dev, 0, 0);
+  81   1              
+  82   1              //fq pulse
+  83   1              digitalWrite(dev->fq, HIGH);
+  84   1              digitalWrite(dev->fq, LOW);     
+  85   1      }
+  86          
+  87          void Ad9850_write(Ad9850 *dev, uint32_t freq, uint8_t phasePowerCon)
+  88          {
+  89   1              Ad9850_send(dev, freq, phasePowerCon);
+  90   1              digitalWrite(dev->fq, HIGH);
+  91   1              digitalWrite(dev->fq, LOW);     
+  92   1      }
+  93          
+  94          void Ad9850_powerdown(Ad9850 *dev)
+  95          {
+  96   1              Ad9850_write(dev, 0, B00000100);
+  97   1      }
+  98          
+  99          void Ad9850_output(Ad9850 *dev, uint32_t hz, uint8_t phase)
+ 100          {
+ 101   1              float rat = ((float)(hz))/(dev->maxFreq);
+ 102   1              uint32_t freqDat = (uint32_t) (rat*(ULONG_MAX) + 0.5f);
+ 103   1              uint32_t phasePowerCon = (phase << 3);
+ 104   1              Ad9850_write(dev, freqDat, phasePowerCon);
+ 105   1      }
+ 106          
+ 107          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   1027    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----      51
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+C51 COMPILER V9.59.0.0   AD9850                                                            02/27/2019 12:46:46 PAGE 3   
+
+   BIT SIZE         =   ----    ----
+   EDATA SIZE       =   ----    ----
+   HDATA SIZE       =   ----    ----
+   XDATA CONST SIZE =   ----    ----
+   FAR CONST SIZE   =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

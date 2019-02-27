@@ -436,6 +436,11 @@
               <FileType>5</FileType>
               <FilePath>.\hardware_serial2.h</FilePath>
             </File>
+            <File>
+              <FileName>ad9850.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\ad9850.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -480,6 +485,11 @@
               <FileName>hardware_serial2.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\hardware_serial2.c</FilePath>
+            </File>
+            <File>
+              <FileName>ad9850.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\ad9850.c</FilePath>
             </File>
           </Files>
         </Group>

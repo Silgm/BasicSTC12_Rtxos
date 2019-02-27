@@ -1,4 +1,4 @@
-C51 COMPILER V9.59.0.0   MAIN                                                              02/26/2019 18:44:15 PAGE 1   
+C51 COMPILER V9.59.0.0   MAIN                                                              02/27/2019 13:26:18 PAGE 1   
 
 
 C51 COMPILER V9.59.0.0, COMPILATION OF MODULE MAIN
@@ -19,8 +19,8 @@ line level    source
    9          #include "gpio.h"
   10          #include "lcd1602.h"
   11          #include "binary.h"
-  12          
-  13          
+  12          #include "ad9850.h"
+  13          #include "i2csoft.h"
   14          #include "hardware_serial2.h"
   15          
   16          /*Define UART parity mode*/
@@ -36,81 +36,130 @@ line level    source
   26   1              os_delete_task(0); //delet task0        
   27   1      }
   28          
-  29          void Lcd_Task() _task_ 1
+  29          void Serial2_Task() _task_ 1
   30          {
-  31   1              int i = 0;
-  32   1              Lcd1602 lcd;
-  33   1              Lcd1602_create(&lcd, P2_7, P2_6, P2_5, P2_4, P2_3, P2_2);
-  34   1              Lcd1602_init(&lcd);
-  35   1              for(;;)
-  36   1              {
-  37   2                      Lcd1602_setCursor(&lcd, 0, 0);
-  38   2                      Lcd1602_print(&lcd, "Hello, World!");
-  39   2                      
-  40   2                      Lcd1602_setCursor(&lcd, 0, 1);
-  41   2                      sprintf(buff, "%d    ", i++);
-  42   2                      Lcd1602_print(&lcd, buff);
-  43   2                      delay_ms(5000);
-  44   2              }
-  45   1      }
-  46          
-  47          /*
-  48          void Startup_Task() _task_ 0
-  49          {
-  50                  Serial2_init(FOSC, BAUD);
-  51                          
-  52                  os_create_task(1); //task1  
-  53                  os_create_task(2); //task2
-  54                  os_delete_task(0); //delet task0        
-C51 COMPILER V9.59.0.0   MAIN                                                              02/26/2019 18:44:15 PAGE 2   
+  31   1              I2CDev dev;
+  32   1              I2CDev_create(&dev, P1_0, P1_1);
+  33   1              I2CDev_init(&dev);
+  34   1              for (;;)
+  35   1              {
+  36   2                      I2CDev_start(&(dev));
+  37   2                      I2CDev_writeAddress(&(dev), 0x52, MODE_WRITE);
+  38   2                      I2CDev_writeData(&(dev), 0x12);
+  39   2                      I2CDev_writeData(&(dev), 0x32);
+  40   2                      I2CDev_stop(&(dev));
+  41   2                      
+  42   2                      delay_ms(2000);
+  43   2              }
+  44   1      }
+  45          
+  46          /*
+  47          void AD9850_Task() _task_ 1
+  48          {
+  49                  uint8_t phase = 0;
+  50                  uint32_t freq = 10000;
+  51                  
+  52                  Ad9850 dds;
+  53                  Lcd1602 lcd;
+  54          
+C51 COMPILER V9.59.0.0   MAIN                                                              02/27/2019 13:26:18 PAGE 2   
 
-  55          }
-  56          
-  57          void Serial_Task() _task_ 1
-  58          {
-  59                  for (;;)
-  60                  {
-  61                          Serial2_sendString("Hello, World!\n");
-  62                          delay_ms(1000);
-  63                  }
-  64          }
-  65          
-  66          void Lcd_Task() _task_ 2
-  67          {
-  68                  uint16_t readSize;
-  69                  int i = 0;
-  70                  Lcd1602 lcd;
-  71                  Lcd1602_create(&lcd, P2_7, P2_6, P2_5, P2_4, P2_3, P2_2);
-  72                  Lcd1602_init(&lcd);
-  73                  for (;;)
-  74                  {
-  75                          Lcd1602_setCursor(&lcd, 0, 0);
-  76                          sprintf(buff, "%d  ", i++);
-  77                          Lcd1602_print(&lcd, buff);
-  78                          
-  79          //              readSize = Serial2_recv(buff, 32);
-  80                          
-  81                          
-  82                          for(i = 0;Serial2_avaliable() > 0; ++i)
-  83                          {
-  84                                  buff[i] = Serial2_recvByte();
-  85                          }
-  86                          buff[i] = '\0';
-  87                          
-  88                          readSize = Serial2_recvWithBlock(buff, 32);
-  89                          Lcd1602_setCursor(&lcd, 0, 1);
-  90                          Lcd1602_send(&lcd, buff, readSize);
+  55                  Ad9850_create(&dds, P1_4, P1_5, P1_6, P1_7, MAX_FREQ_DEFAULT);
+  56                  Lcd1602_create(&lcd, P2_7, P2_6, P2_5, P2_4, P2_3, P2_2);
+  57                  
+  58                  Ad9850_init(&dds);
+  59                  Lcd1602_init(&lcd);
+  60          
+  61                  //Ad9850_write(&dds, 0x0007ffff, B00000000);
+  62                  for(;;)
+  63                  {
+  64                          Ad9850_output(&dds, freq, phase);
+  65                          phase++;
+  66                          phase %= MAX_PHASE;
+  67                          sprintf(buff, "%d  ", (int)phase);
+  68                          Lcd1602_setCursor(&lcd, 0, 0);
+  69                          Lcd1602_print(&lcd, buff);
+  70                          delay_ms(2000);
+  71                  }
+  72          }
+  73          */
+  74          
+  75          /*
+  76          void Lcd_Task() _task_ 1
+  77          {
+  78                  int i = 0;
+  79                  Lcd1602 lcd;
+  80                  Lcd1602_create(&lcd, P2_7, P2_6, P2_5, P2_4, P2_3, P2_2);
+  81                  Lcd1602_init(&lcd);
+  82                  for(;;)
+  83                  {
+  84                          Lcd1602_setCursor(&lcd, 0, 0);
+  85                          Lcd1602_print(&lcd, "Hello, World!");
+  86                          
+  87                          Lcd1602_setCursor(&lcd, 0, 1);
+  88                          sprintf(buff, "%d    ", i++);
+  89                          Lcd1602_print(&lcd, buff);
+  90                          delay_ms(5000);
   91                  }
   92          }
   93          */
-  94          
-  95          
+  94          /*
+  95          void Startup_Task() _task_ 0
+  96          {
+  97                  Serial2_init(FOSC, BAUD);
+  98                          
+  99                  os_create_task(1); //task1  
+ 100                  os_create_task(2); //task2
+ 101                  os_delete_task(0); //delet task0        
+ 102          }
+ 103          
+ 104          void Serial_Task() _task_ 1
+ 105          {
+ 106                  for (;;)
+ 107                  {
+ 108                          Serial2_sendString("Hello, World!\n");
+ 109                          delay_ms(1000);
+ 110                  }
+ 111          }
+ 112          
+ 113          void Lcd_Task() _task_ 2
+ 114          {
+ 115                  uint16_t readSize;
+ 116                  int i = 0;
+C51 COMPILER V9.59.0.0   MAIN                                                              02/27/2019 13:26:18 PAGE 3   
+
+ 117                  Lcd1602 lcd;
+ 118                  Lcd1602_create(&lcd, P2_7, P2_6, P2_5, P2_4, P2_3, P2_2);
+ 119                  Lcd1602_init(&lcd);
+ 120                  for (;;)
+ 121                  {
+ 122                          Lcd1602_setCursor(&lcd, 0, 0);
+ 123                          sprintf(buff, "%d  ", i++);
+ 124                          Lcd1602_print(&lcd, buff);
+ 125                          
+ 126          //              readSize = Serial2_recv(buff, 32);
+ 127                          
+ 128                          
+ 129                          for(i = 0;Serial2_avaliable() > 0; ++i)
+ 130                          {
+ 131                                  buff[i] = Serial2_recvByte();
+ 132                          }
+ 133                          buff[i] = '\0';
+ 134                          
+ 135                          readSize = Serial2_recvWithBlock(buff, 32);
+ 136                          Lcd1602_setCursor(&lcd, 0, 1);
+ 137                          Lcd1602_send(&lcd, buff, readSize);
+ 138                  }
+ 139          }
+ 140          */
+ 141          
+ 142          
 
 
 MODULE INFORMATION:   STATIC OVERLAYABLE
-   CODE SIZE        =    185    ----
-   CONSTANT SIZE    =     21    ----
-   XDATA SIZE       =     32      13
+   CODE SIZE        =    101    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =     32       5
    PDATA SIZE       =   ----    ----
    DATA SIZE        =   ----    ----
    IDATA SIZE       =   ----    ----
